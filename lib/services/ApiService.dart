@@ -1,0 +1,46 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class ApiService {
+  // Create
+  Future<dynamic> create(String url, Map<String, dynamic> data) async {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
+    return _handleResponse(response);
+  }
+
+  // Read (Get all or by ID)
+  Future<dynamic> read(String url, {String? id}) async {
+    final fullUrl = id != null ? "$url/$id" : url;
+    final response = await http.get(Uri.parse(fullUrl));
+    return _handleResponse(response);
+  }
+
+  // Update
+  Future<dynamic> update(String url, String id, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse("$url/$id"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
+    return _handleResponse(response);
+  }
+
+  // Delete
+  Future<dynamic> delete(String url, String id) async {
+    final response = await http.delete(Uri.parse("$url/$id"));
+    return _handleResponse(response);
+  }
+
+  // Handle API Response
+  dynamic _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("API Error: ${response.statusCode}, ${response.body}");
+    }
+  }
+}

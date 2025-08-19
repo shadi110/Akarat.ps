@@ -1,30 +1,53 @@
 import 'package:flutter/material.dart';
-
 import 'app_text.dart';
 
-
 class RealEstateCard extends StatelessWidget {
-  final String imageUrl;
-  final String title;
-  final String description;
-  final String price;
-  final String location;
-  final String status; // e.g., "For Sale" or "Sold"
+  final String? imageUrl;
+  final String? title;
+  final String? description;
+  final String? price;
+  final String? location;
+  final String? status; // e.g., "For Sale" or "Sold"
   final VoidCallback? onTap;
 
   const RealEstateCard({
     Key? key,
-    required this.imageUrl,
-    required this.title,
-    required this.description,
-    required this.price,
-    required this.location,
-    required this.status,
+    this.imageUrl,
+    this.title,
+    this.description,
+    this.price,
+    this.location,
+    this.status,
     this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Safe values (fallbacks if null or empty)
+    final safeImage = (imageUrl != null && imageUrl!.trim().isNotEmpty)
+        ? imageUrl!
+        : "https://via.placeholder.com/300x200";
+
+    final safeTitle = (title != null && title!.trim().isNotEmpty)
+        ? title!
+        : "No Title";
+
+    final safeDescription = (description != null && description!.trim().isNotEmpty)
+        ? description!
+        : "No description available";
+
+    final safePrice = (price != null && price!.trim().isNotEmpty)
+        ? price!
+        : "Not specified";
+
+    final safeLocation = (location != null && location!.trim().isNotEmpty)
+        ? location!
+        : "Unknown location";
+
+    final safeStatus = (status != null && status!.trim().isNotEmpty)
+        ? status!
+        : "";
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -32,7 +55,7 @@ class RealEstateCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 8,
@@ -43,16 +66,28 @@ class RealEstateCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
+            // ✅ Safe Image with fallback & error handling
             ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: Image.network(
-                imageUrl,
+                safeImage,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 180,
+                  color: Colors.grey[300],
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    size: 40,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
             ),
+
+            // ✅ Card details
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
@@ -64,54 +99,60 @@ class RealEstateCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: AppText(
-                          text: title,
+                          text: safeTitle,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: status.toLowerCase() == 'sold'
-                              ? Colors.red
-                              : Colors.green,
-                          borderRadius: BorderRadius.circular(12),
+                      if (safeStatus.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: safeStatus.toLowerCase() == 'sold'
+                                ? Colors.red
+                                : Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: AppText(
+                            text: safeStatus,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        child: AppText(
-                          text: status,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ],
                   ),
-                  SizedBox(height: 6),
+
+                  const SizedBox(height: 6),
 
                   // Description
                   AppText(
-                    text: description,
+                    text: safeDescription,
                     fontSize: 14,
                     color: Colors.grey[700]!,
                   ),
-                  SizedBox(height: 8),
+
+                  const SizedBox(height: 8),
 
                   // Location
                   Row(
                     children: [
-                      Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                      SizedBox(width: 4),
+                      const Icon(Icons.location_on,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
                       AppText(
-                        text: location,
+                        text: safeLocation,
                         fontSize: 14,
                         color: Colors.grey[600]!,
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+
+                  const SizedBox(height: 8),
 
                   // Price
                   AppText(
-                    text: price,
+                    text: safePrice,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.blueAccent,

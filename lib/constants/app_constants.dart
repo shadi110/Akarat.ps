@@ -8,6 +8,7 @@ class AppColors {
   static const Color textPrimary = Color(0xFF333333);
   static const Color textSecondary = Color(0xFF777777);
   static const Color error = Color(0xFFFF0000);
+  static const Color addAdv = Color(0xFFFBC57C);
 }
 
 class AppPadding {

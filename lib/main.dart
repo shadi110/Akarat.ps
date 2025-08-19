@@ -1,4 +1,4 @@
-import 'package:akarat/test_data/test.dart';
+import 'package:akarat/widgets/dashboard_main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
       ],
       locale: const Locale('ar', ''), // Arabic default
       debugShowCheckedModeBanner: false,
-      home: const PropertyListPage()
+      home: DashboardMainPage()
 
     );
   }

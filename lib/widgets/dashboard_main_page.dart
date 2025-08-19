@@ -1,17 +1,18 @@
+import 'package:akarat/widgets/add_new_real_estate_page.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/ApiConstants.dart';
 import '../constants/app_constants.dart';
 import '../services/ApiService.dart';
 import '../widgets/real_estate_card.dart';
-class PropertyListPage extends StatefulWidget {
-  PropertyListPage({super.key});
+class DashboardMainPage extends StatefulWidget {
+  const DashboardMainPage({super.key});
 
   @override
-  State<PropertyListPage> createState() => _PropertyListPageState();
+  State<DashboardMainPage> createState() => _DashboardMainPageState();
 }
 
-class _PropertyListPageState extends State<PropertyListPage> {
+class _DashboardMainPageState extends State<DashboardMainPage> {
   final apiService = ApiService();
   List<dynamic> properties = [];
   bool isLoading = true;
@@ -26,7 +27,6 @@ class _PropertyListPageState extends State<PropertyListPage> {
       final response = await apiService.read(ApiConstants.realEstates);
       setState(() {
         properties = response; // Assuming API returns a list of properties
-        print('properities : ${properties}');
         isLoading = false;
       });
     } catch (e) {
@@ -62,15 +62,16 @@ class _PropertyListPageState extends State<PropertyListPage> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to add new ad page
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Add New Ad tapped!")),
-          );
-        },
-        label: const Text("إعلان جديد"),
-        icon: const Icon(Icons.add),
-        backgroundColor: AppColors.addAdv
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddNewRealEstatePage()),
+            );
+            fetchProperties();
+          },
+          label: const Text("إعلان جديد"),
+          icon: const Icon(Icons.add),
+          backgroundColor: AppColors.addAdv
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

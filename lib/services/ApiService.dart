@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -35,6 +36,21 @@ class ApiService {
   Future<dynamic> delete(String url, String id) async {
     final response = await http.delete(Uri.parse("$url/$id"));
     return _handleResponse(response);
+  }
+
+  Future<dynamic> uploadFile(String url, File file, {String fieldName = "file"}) async {
+    var request = http.MultipartRequest("POST", Uri.parse(url));
+    request.files.add(await http.MultipartFile.fromPath(fieldName, file.path));
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    print('response is ${response.body}');
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return response.body;
+    } else {
+      throw Exception("Failed to upload file: ${response.statusCode}");
+    }
   }
 
   // Handle API Response

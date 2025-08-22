@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../constants/ApiConstants.dart';
 import '../services/ApiService.dart';
+import '../utils/UserPreferences.dart';
 
 class AddNewRealEstatePage extends StatefulWidget {
   const AddNewRealEstatePage({super.key});
@@ -14,33 +15,62 @@ class AddNewRealEstatePage extends StatefulWidget {
 
 class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
 
+  // Controllers
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
+  final _sizeController = TextEditingController();
+
+  // Media
   File? _coverImage;
-    final ImagePicker _picker = ImagePicker();
+  List<File> _extraImages = [];
+  File? _videoFile;
 
-  Future<void> _pickImage() async {
+  // Dropdowns
+  String? _selectedType;
+  String _selectedMetric = "m²";
+
+  final ImagePicker _picker = ImagePicker();
+  final apiService = ApiService();
+
+  // Pick cover image
+  Future<void> _pickCoverImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      setState(() => _coverImage = File(pickedFile.path));
+    }
+  }
+
+  // Pick multiple extra images
+  Future<void> _pickExtraImages() async {
+    final pickedFiles = await _picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
       setState(() {
-        _coverImage = File(pickedFile.path);
+        _extraImages = pickedFiles.take(10).map((f) => File(f.path)).toList();
       });
     }
   }
 
-  final apiService = ApiService();
+  // Pick one video
+  Future<void> _pickVideo() async {
+    final pickedFile = await _picker.pickVideo(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() => _videoFile = File(pickedFile.path));
+    }
+  }
+
   List<dynamic> properties = [];
   bool isLoading = true;
-
-
   Future<void> addProperty(Map<String, dynamic> data) async {
     try {
-      final response = await apiService.create(ApiConstants.newRealEstates, data);
+      String? userId = await UserPreferences.getUserId();
+      final response = await apiService.create(ApiConstants.newRealEstates + userId!, data);
+      print('response is ${response}');
       setState(() {
-        properties = response; // Assuming API returns a list of properties
+        properties.add(response);// Assuming API returns a list of properties
         isLoading = false;
       });
     } catch (e) {
@@ -50,24 +80,51 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
       debugPrint("Error fetching properties: $e");
     }
   }
+  Future<String?> _uploadCoverImage(File image) async {
+    try {
+      final response = await apiService.uploadFile(
+        ApiConstants.uploadOneImage, // your endpoint for upload
+        image,
+        fieldName: "file", // depends on your API requirement
+      );
 
+      // Assuming response returns something like { "url": "https://..." }
+      return response;
+    } catch (e) {
+      debugPrint("Error uploading image: $e");
+      return null;
+    }
+  }
+
+  // Submit form
   Future<void> _submitForm() async {
+    String? coverImageUrl;
+    if (_coverImage != null) {
+      coverImageUrl = await _uploadCoverImage(_coverImage!);
+      if (coverImageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("فشل رفع صورة الغلاف"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     if (_formKey.currentState!.validate()) {
-      // Process the data - you would typically send this to your backend
-      final newAd = {
+      final requestBody = {
         'title': _titleController.text,
         'description': _descriptionController.text,
         'price': _priceController.text,
-        //'location': _locationController.text,
+        'phoneNumber': _phoneNumberController.text,
+        'type': _selectedType ?? '',
+        'size': _sizeController.text,
+        'sizeMetric': _selectedMetric,
+        'coverPhoto': coverImageUrl
+        // Note: Files (_coverImage, _extraImages, _videoFile) must be uploaded via multipart separately
       };
 
-      final Map<String, dynamic> requestBody = {
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'price': _priceController.text,
-        //'location': _locationController.text,
-        // Add other fields as needed by your API
-      };
       final response = await addProperty(requestBody);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -82,175 +139,6 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
         _coverImage = null;
       });
     }
-
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('اضافة عقار جديد'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            // Cover Image Section
-            GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.shade400,
-                  width: 1.5,
-                ),
-              ),
-              child: _coverImage == null
-                  ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.camera_alt,
-                    size: 50,
-                    color: Colors.grey.shade500,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Tap to add cover image',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              )
-                  : ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _coverImage!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // Title Field
-          TextFormField(
-            controller: _titleController,
-            decoration: InputDecoration(
-              labelText: 'Title',
-              prefixIcon: Icon(Icons.title),
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a title';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: 16),
-
-          // Description Field
-          TextFormField(
-            controller: _descriptionController,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: 'Description',
-              alignLabelWithHint: true,
-              prefixIcon: Padding(
-                padding: EdgeInsets.only(bottom: 60),
-                child: Icon(Icons.description),
-              ),
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a description';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: 16),
-
-          // Price Field
-          TextFormField(
-            controller: _priceController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Price',
-              prefixIcon: Icon(Icons.attach_money),
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a price';
-              }
-              if (double.tryParse(value) == null) {
-                return 'Please enter a valid number';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: 16),
-
-          // Location Field
-          TextFormField(
-            controller: _locationController,
-            decoration: InputDecoration(
-              labelText: 'Location',
-              prefixIcon: Icon(Icons.location_on),
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.grey.shade100,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a location';
-              }
-              return null;
-            },
-          ),
-          SizedBox(height: 24),
-          ElevatedButton(
-             onPressed: _submitForm,
-             style: ElevatedButton.styleFrom(
-               backgroundColor: AppColors.addAdv,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'نشر الاعلان',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          )
-          // Submit Button
-        ),
-      ),
-    );
   }
 
   @override
@@ -259,6 +147,161 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
     _descriptionController.dispose();
     _priceController.dispose();
     _locationController.dispose();
+    _phoneNumberController.dispose();
+    _sizeController.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('إضافة عقار جديد')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+
+              // Cover image picker
+              GestureDetector(
+                onTap: _pickCoverImage,
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade400, width: 1.5),
+                  ),
+                  child: _coverImage == null
+                      ? const Center(child: Text("اضغط لإضافة صورة الغلاف"))
+                      : Image.file(_coverImage!, fit: BoxFit.cover, width: double.infinity),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Extra images
+              ElevatedButton.icon(
+                onPressed: _pickExtraImages,
+                icon: const Icon(Icons.photo_library),
+                label: const Text("إضافة صور أخرى (حتى 10)"),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _extraImages.map((img) {
+                  return Image.file(img, width: 80, height: 80, fit: BoxFit.cover);
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // Video
+              ElevatedButton.icon(
+                onPressed: _pickVideo,
+                icon: const Icon(Icons.videocam),
+                label: const Text("إضافة فيديو (اختياري)"),
+              ),
+              if (_videoFile != null)
+                Text("تم اختيار فيديو: ${_videoFile!.path.split('/').last}"),
+
+              const SizedBox(height: 20),
+
+              // Title
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty ? 'يرجى إدخال العنوان' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty ? 'يرجى إدخال الوصف' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Price
+              TextFormField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'السعر', border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty ? 'يرجى إدخال السعر' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Location
+              TextFormField(
+                controller: _locationController,
+                decoration: const InputDecoration(labelText: 'الموقع', border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty ? 'يرجى إدخال الموقع' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Phones
+              TextFormField(
+                controller: _phoneNumberController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'رقم الهاتف ', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              // Dropdown for type
+              DropdownButtonFormField<String>(
+                value: _selectedType,
+                decoration: const InputDecoration(labelText: 'نوع العقار', border: OutlineInputBorder()),
+                items: ["LAND", "VILLA", "APARTMENT", "HOUSE", "COMMERCIAL"]
+                    .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                    .toList(),
+                onChanged: (val) => setState(() => _selectedType = val),
+                validator: (value) => value == null ? 'اختر نوع العقار' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Size + metric
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _sizeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'المساحة', border: OutlineInputBorder()),
+                      validator: (value) => value!.isEmpty ? 'يرجى إدخال المساحة' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedMetric,
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      items: ["m²", "ft²"]
+                          .map((metric) => DropdownMenuItem(value: metric, child: Text(metric)))
+                          .toList(),
+                      onChanged: (val) => setState(() => _selectedMetric = val!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Submit button
+              ElevatedButton(
+                onPressed: _submitForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.addAdv,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("نشر الإعلان", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

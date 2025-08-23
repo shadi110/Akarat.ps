@@ -96,6 +96,26 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
     }
   }
 
+  Future<List<String>> uploadExtraImages(List<File> images) async {
+    List<String> uploadedUrls = [];
+      try {
+        uploadedUrls = await apiService.uploadFiles(
+          ApiConstants.uploadBulkOfImages, // your endpoint for upload
+          images,
+          fieldName: "files", // depends on your API requirement
+        );
+        print('uploadurl is ${uploadedUrls}');
+        return uploadedUrls;
+      } catch (e) {
+        print('Error in uploadExtraImages: $e');
+
+        //debugPrint("Error uploading image ${images.path}: $e");
+        // Optionally, continue or break depending on your logic
+        return [];
+      }
+  }
+
+
   // Submit form
   Future<void> _submitForm() async {
     String? coverImageUrl;
@@ -112,6 +132,21 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
       }
     }
 
+    List<String> extraImagesList;
+    if (_extraImages != null) {
+      extraImagesList = await uploadExtraImages(_extraImages!);
+      print('extraImagesList : ${extraImagesList}');
+      if (extraImagesList == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("فشل رفع صورة اضافيه"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     if (_formKey.currentState!.validate()) {
       final requestBody = {
         'title': _titleController.text,
@@ -121,7 +156,8 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
         'type': _selectedType ?? '',
         'size': _sizeController.text,
         'sizeMetric': _selectedMetric,
-        'coverPhoto': coverImageUrl
+        'coverPhoto': coverImageUrl,
+        'listOfPictures' : extraImagesList
         // Note: Files (_coverImage, _extraImages, _videoFile) must be uploaded via multipart separately
       };
 
@@ -155,7 +191,8 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إضافة عقار جديد')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white, title: const Text('إضافة عقار جديد')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -292,7 +329,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
               ElevatedButton(
                 onPressed: _submitForm,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.addAdv,
+                  backgroundColor: AppColors.pastelYellow,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

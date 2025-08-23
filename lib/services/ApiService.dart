@@ -53,6 +53,42 @@ class ApiService {
     }
   }
 
+  Future<List<String>> uploadFiles(
+      String url,
+      List<File> files, {
+        String fieldName = "files",
+      }) async {
+    var request = http.MultipartRequest("POST", Uri.parse(url));
+
+    for (var file in files) {
+      request.files.add(
+        await http.MultipartFile.fromPath(fieldName, file.path),
+      );
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    print('response is ${response.body} status ${response.statusCode} ');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print('entered here in success');
+
+      // Parse the JSON response - it's directly an array of strings
+      final parsedResponse = json.decode(response.body);
+
+      // Since we know it's a List, cast it to List<String>
+      if (parsedResponse is List) {
+        return parsedResponse.cast<String>();
+      } else {
+        throw Exception("Unexpected response format. Expected List, got: ${parsedResponse.runtimeType}");
+      }
+    } else {
+      print('entered here in not success');
+      throw Exception("Failed to upload files: ${response.statusCode}");
+    }
+  }
+
   // Handle API Response
   dynamic _handleResponse(http.Response response) {
     print('Response status ${response.statusCode}');

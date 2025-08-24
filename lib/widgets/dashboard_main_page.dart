@@ -87,8 +87,8 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
               child: RealEstateCard(
                 title: property["title"],
                 description: property["description"],
-                price: '',
-                location: '',
+                price: property["price"],
+                location: property["location"],
                 status: property["status"],
                 imageUrl: property["coverPhoto"],
                 listOfImages:  listOfPictures ?? []

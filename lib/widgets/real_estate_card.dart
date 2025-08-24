@@ -1,6 +1,6 @@
 import 'package:akarat/constants/ApiConstants.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as apiService;
+import 'package:http/http.dart' as http;
 import 'RealEstateDetailsPage.dart';
 import 'app_text.dart';
 
@@ -9,10 +9,10 @@ class RealEstateCard extends StatelessWidget {
   final List<String>? listOfImages;
   final String? title;
   final String? description;
-  final String? price;
-  final String? location;
+  final double? price;
+  final dynamic location; // Changed from String? to dynamic
   final String? status;
-  final String? advId; // Add this
+  final String? advId;
   final VoidCallback? onTap;
 
   const RealEstateCard({
@@ -22,11 +22,39 @@ class RealEstateCard extends StatelessWidget {
     this.title,
     this.description,
     this.price,
-    this.location,
+    this.location, // Changed type
     this.status,
-    this.advId, // Add this
+    this.advId,
     this.onTap,
   }) : super(key: key);
+
+  // Helper method to extract location text
+  String _getLocationText() {
+    if (location == null) return "Unknown location";
+
+    if (location is String) {
+      return location as String;
+    }
+
+    if (location is Map<String, dynamic>) {
+      final locationMap = location as Map<String, dynamic>;
+      final city = locationMap['city'] ?? '';
+      final area = locationMap['area'] ?? '';
+      final country = locationMap['country'] ?? '';
+
+      if (city.isNotEmpty && area.isNotEmpty) {
+        return '$city - $area';
+      } else if (city.isNotEmpty) {
+        return city;
+      } else if (area.isNotEmpty) {
+        return area;
+      } else if (country.isNotEmpty) {
+        return country;
+      }
+    }
+
+    return "Unknown location";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,24 +64,26 @@ class RealEstateCard extends StatelessWidget {
 
     final safeTitle = title?.isNotEmpty == true ? title! : "No Title";
     final safeDescription = description?.isNotEmpty == true ? description! : "No description available";
-    final safePrice = price?.isNotEmpty == true ? price! : "Not specified";
-    final safeLocation = location?.isNotEmpty == true ? location! : "Unknown location";
+    final safeLocation = _getLocationText(); // Use the helper method
     final safeStatus = status?.isNotEmpty == true ? status! : "";
 
     return GestureDetector(
-      onTap: () {Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RealEstateDetailsPage(
-            coverImage: imageUrl ?? '',
-            title: title ?? '',
-            description: description ?? '',
-            price: price ?? '',
-            location: location ?? '',
-            availability: status ?? '', images: listOfImages ?? [],
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RealEstateDetailsPage(
+              coverImage: imageUrl ?? '',
+              title: title ?? '',
+              description: description ?? '',
+              price: price ?? 0,
+              location: safeLocation, // Pass the formatted location
+              availability: status ?? '',
+              images: listOfImages ?? [],
+            ),
           ),
-        ),
-      );},
+        );
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
@@ -126,10 +156,12 @@ class RealEstateCard extends StatelessWidget {
                     children: [
                       Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 4),
-                      AppText(
-                        text: safeLocation,
-                        fontSize: 14,
-                        color: Colors.grey[600]!,
+                      Flexible(
+                        child: AppText(
+                          text: safeLocation,
+                          fontSize: 14,
+                          color: Colors.grey[600]!,
+                        ),
                       ),
                     ],
                   ),
@@ -137,13 +169,13 @@ class RealEstateCard extends StatelessWidget {
                   Row(
                     children: [
                       AppText(
-                        text: safePrice,
+                        text: price?.toString() ?? '0',
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.blueAccent,
                       ),
-                      Spacer(),
-                      if (advId != null) // Only show delete if advId is provided
+                      const Spacer(),
+                      if (advId != null)
                         GestureDetector(
                           onTap: () async {
                             try {
@@ -166,18 +198,26 @@ class RealEstateCard extends StatelessWidget {
                               );
 
                               if (confirm == true) {
-                                final response = await apiService.delete(
+                                final response = await http.delete(
                                     Uri.parse("${ApiConstants.realEstates}/$advId")
                                 );
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("تم حذف الإعلان بنجاح"),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-
-                                // Optionally refresh your list by calling a callback
+                                if (response.statusCode == 200 || response.statusCode == 204) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("تم حذف الإعلان بنجاح"),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                  // You might want to add a callback here to refresh the parent widget
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("فشل في حذف الإعلان"),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
                               }
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +228,7 @@ class RealEstateCard extends StatelessWidget {
                               );
                             }
                           },
-                          child: AppText(
+                          child: const AppText(
                             text: 'حذف',
                             fontSize: 14,
                             color: Colors.red,
@@ -205,4 +245,3 @@ class RealEstateCard extends StatelessWidget {
     );
   }
 }
-

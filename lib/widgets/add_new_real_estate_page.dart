@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../constants/ApiConstants.dart';
 import '../services/ApiService.dart';
+import '../utils/AreasDetailsHelper.dart';
 import '../utils/UserPreferences.dart';
+import '../utils/helper.dart';
 
 class AddNewRealEstatePage extends StatefulWidget {
   const AddNewRealEstatePage({super.key});
@@ -31,7 +33,10 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
 
   // Dropdowns
   String? _selectedType;
-  String _selectedMetric = "m²";
+  String _selectedMetric = "متر مربع";
+  String _selectedCurrency = "دولار";
+  String _selectedCity = "رام الله";
+  String? _selectedArea;
 
   final ImagePicker _picker = ImagePicker();
   final apiService = ApiService();
@@ -77,7 +82,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
       setState(() {
         isLoading = false;
       });
-      debugPrint("Error fetching properties: $e");
+      debugPrint("Error ADD properties: $e");
     }
   }
   Future<String?> _uploadCoverImage(File image) async {
@@ -132,11 +137,11 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
       }
     }
 
-    List<String> extraImagesList;
-    if (_extraImages != null) {
+    List<String>? extraImagesList;
+    if (_extraImages.isNotEmpty) {
       extraImagesList = await uploadExtraImages(_extraImages!);
       print('extraImagesList : ${extraImagesList}');
-      if (extraImagesList == null) {
+      if (extraImagesList.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("فشل رفع صورة اضافيه"),
@@ -148,16 +153,22 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
     }
 
     if (_formKey.currentState!.validate()) {
+      print(_selectedArea);
       final requestBody = {
         'title': _titleController.text,
         'description': _descriptionController.text,
         'price': _priceController.text,
         'phoneNumber': _phoneNumberController.text,
-        'type': _selectedType ?? '',
+        'type': Helper.propertyTypeMap[_selectedType] ?? '',
         'size': _sizeController.text,
-        'sizeMetric': _selectedMetric,
+        'sizeMetric': Helper.areaUnitMap[_selectedMetric],
         'coverPhoto': coverImageUrl,
-        'listOfPictures' : extraImagesList
+        'listOfPictures' : extraImagesList ?? [],
+        'location': {
+          'city': _selectedCity,
+          'country': "فلسطين", // optional if you want
+          'area': _selectedArea,
+        }
         // Note: Files (_coverImage, _extraImages, _videoFile) must be uploaded via multipart separately
       };
 
@@ -247,7 +258,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
               // Title
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'عنوان الاعلان', border: OutlineInputBorder()),
                 validator: (value) => value!.isEmpty ? 'يرجى إدخال العنوان' : null,
               ),
               const SizedBox(height: 16),
@@ -260,24 +271,69 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
                 validator: (value) => value!.isEmpty ? 'يرجى إدخال الوصف' : null,
               ),
               const SizedBox(height: 16),
-
-              // Price
-              TextFormField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'السعر', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'يرجى إدخال السعر' : null,
+              Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCity,
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      items: AreasDetailsHelper.westBankCities
+                          .map((city) => DropdownMenuItem(value: city, child: Text(city)))
+                          .toList(),
+                      onChanged: (val) => setState(() {
+                        _selectedCity = val!;
+                        _selectedArea = null; // reset area
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      value: (_selectedArea != null &&
+                          AreasDetailsHelper.allAreas[_selectedCity]?.contains(_selectedArea) == true)
+                          ? _selectedArea
+                          : null, // <-- use null if value is not valid
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      items: AreasDetailsHelper.allAreas[_selectedCity]
+                          ?.map((area) => DropdownMenuItem(value: area, child: Text(area)))
+                          .toList(),
+                      onChanged: (val) => setState(() => _selectedArea = val),
+                      validator: (value) => value == null || value.isEmpty ? 'اختر المنطقة' : null,
+                      hint: const Text("اختر المنطقة"),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-
+              Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: TextFormField(
+                      controller: _priceController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'السعر', border: OutlineInputBorder()),
+                      validator: (value) => value!.isEmpty ? 'يرجى إدخال السعر' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCurrency,
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      items: ["دولار", "دينار", "شيقل"]
+                          .map((metric) => DropdownMenuItem(value: metric, child: Text(metric)))
+                          .toList(),
+                      onChanged: (val) => setState(() => _selectedCurrency = val!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               // Location
-              TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(labelText: 'الموقع', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'يرجى إدخال الموقع' : null,
-              ),
-              const SizedBox(height: 16),
-
               // Phones
               TextFormField(
                 controller: _phoneNumberController,
@@ -289,10 +345,10 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
               DropdownButtonFormField<String>(
                 value: _selectedType,
                 decoration: const InputDecoration(labelText: 'نوع العقار', border: OutlineInputBorder()),
-                items: ["LAND", "VILLA", "APARTMENT", "HOUSE", "COMMERCIAL"]
+                items: ["شقة عظم", "شقة مشطبة", "فيلا", "منزل مستقل", "مخزن", "ارض"]
                     .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                     .toList(),
-                onChanged: (val) => setState(() => _selectedType = val),
+                onChanged: (val) => setState(() =>  _selectedType = val!),
                 validator: (value) => value == null ? 'اختر نوع العقار' : null,
               ),
               const SizedBox(height: 16),
@@ -315,7 +371,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
                     child: DropdownButtonFormField<String>(
                       value: _selectedMetric,
                       decoration: const InputDecoration(border: OutlineInputBorder()),
-                      items: ["m²", "ft²"]
+                      items: ["متر مربع", "دونم"]
                           .map((metric) => DropdownMenuItem(value: metric, child: Text(metric)))
                           .toList(),
                       onChanged: (val) => setState(() => _selectedMetric = val!),

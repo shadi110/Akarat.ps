@@ -35,7 +35,11 @@ class ApiService {
   // Delete
   Future<dynamic> delete(String url, String id) async {
     final response = await http.delete(Uri.parse("$url/$id"));
-    return _handleResponse(response);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return "success";
+    } else {
+      throw Exception("API Error: ${response.statusCode}, ${response.body}");
+    }
   }
 
   Future<dynamic> uploadFile(String url, File file, {String fieldName = "file"}) async {

@@ -82,7 +82,7 @@ class _MyRealEstatesPageState extends State<MyRealEstatesPage> {
 
       if (confirmDelete == true) {
         // Delete the property
-        //await apiService.delete('${ApiConstants.realEstates}/$propertyId');
+        await apiService.delete('${ApiConstants.realEstates}' , propertyId);
 
         // Refresh the list
         ScaffoldMessenger.of(context).showSnackBar(
@@ -142,53 +142,44 @@ class _MyRealEstatesPageState extends State<MyRealEstatesPage> {
           itemCount: userProperties.length,
           itemBuilder: (context, index) {
             final property = userProperties[index];
-            return Dismissible(
-              key: Key(property['id'].toString()),
-              direction: DismissDirection.endToStart,
-              background: Container(
-                color: Colors.red,
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 20),
-                child: const Icon(Icons.delete, color: Colors.white),
-              ),
-              confirmDismiss: (direction) async {
-                return await showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text("حذف العقار"),
-                    content: const Text("هل أنت متأكد من أنك تريد حذف هذا العقار؟"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text("إلغاء"),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                        child: const Text("حذف"),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              onDismissed: (direction) {
-                _deleteProperty(property['id'].toString());
-              },
 
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: RealEstateCard(
-                  title: property["title"] ?? "بدون عنوان",
-                  description: property["description"] ?? "بدون وصف",
-                  price: property["price"]?.toString() ?? '',
-                  location: property["location"] ?? '',
-                  status: property["status"] ?? "غير معروف",
-                  imageUrl: property["coverPhoto"],
-                  listOfImages:  [],
-                  onTap: () {
-                    // You can add navigation to property details here
-                  },
-                ),
+            // Convert List<dynamic> to List<String>
+            List<String> listOfPictures = [];
+            if (property["listOfPictures"] != null) {
+              listOfPictures = List<String>.from(property["listOfPictures"]);
+            }
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: Stack(
+                children: [
+                  // Your RealEstateCard
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: RealEstateCard(
+                      title: property["title"] ?? "بدون عنوان",
+                      description: property["description"] ?? "بدون وصف",
+                      price: property["price"]!,
+                      location: property["location"] ?? '',
+                      status: property["status"] ?? "غير معروف",
+                      imageUrl: property["coverPhoto"],
+                      listOfImages: listOfPictures,
+                      onTap: () {
+                        // You can add navigation to property details here
+                      },
+                    ),
+                  ),
+
+                  // Delete button in top right corner
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteProperty(property['id'].toString()),
+                    ),
+                  ),
+                ],
               ),
             );
           },

@@ -1,12 +1,14 @@
+import 'package:akarat/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import '../widgets/app_text.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RealEstateDetailsPage extends StatelessWidget {
   final String coverImage;
   final List<String> images;
   final String title;
   final String description;
-  final String price;
+  final double price;
   final String location;
   final String availability; // e.g., "For Sale", "Sold"
   final Map<String, String>? otherDetails; // optional key-value details
@@ -23,29 +25,66 @@ class RealEstateDetailsPage extends StatelessWidget {
     this.otherDetails,
   });
 
+  void _openImage(BuildContext context, String initialImage, List<String> allImages) {
+    int initialIndex = allImages.indexOf(initialImage);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.black),
+          body: PageView.builder(
+            controller: PageController(initialPage: initialIndex),
+            itemCount: allImages.length,
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                child: Center(
+                  child: Image.network(
+                    allImages[index],
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("تفاصيل العقار"),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: AppColors.pastelBlue,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image
-            Image.network(
-              coverImage,
-              height: 250,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+            // Cover image (clickable too)
+            GestureDetector(
+              onTap: () => _openImage(context, coverImage, [coverImage, ...images]),
+              child: Image.network(
+                coverImage,
                 height: 250,
-                color: Colors.grey[300],
-                alignment: Alignment.center,
-                child: const Icon(Icons.image_not_supported, size: 50),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 250,
+                  color: Colors.grey[300],
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.image_not_supported, size: 50),
+                ),
               ),
             ),
 
@@ -59,21 +98,32 @@ class RealEstateDetailsPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: images.length,
                 itemBuilder: (context, index) {
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        images[index],
-                        width: 120,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                  return GestureDetector(
+                    onTap: () => _openImage(context, images[index], [coverImage, ...images]), // pass the full list here
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: CachedNetworkImage(
+                          imageUrl: images[index],
                           width: 120,
                           height: 100,
-                          color: Colors.grey[300],
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.image_not_supported),
+                          fit: BoxFit.cover,
+                          fadeInDuration: const Duration(milliseconds: 300),
+                          placeholder: (context, url) => Container(
+                            width: 120,
+                            height: 100,
+                            color: Colors.grey[300],
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 120,
+                            height: 100,
+                            color: Colors.grey[300],
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
                         ),
                       ),
                     ),
@@ -81,9 +131,7 @@ class RealEstateDetailsPage extends StatelessWidget {
                 },
               ),
             ),
-
             const SizedBox(height: 16),
-
             // Title & Availability
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -188,6 +236,33 @@ class RealEstateDetailsPage extends StatelessWidget {
 
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class FullScreenImagePage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImagePage({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Center(
+          child: InteractiveViewer(
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              placeholder: (context, url) => const CircularProgressIndicator(),
+              errorWidget: (context, url, error) =>
+              const Icon(Icons.image_not_supported, color: Colors.white),
+            ),
+          ),
         ),
       ),
     );

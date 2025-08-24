@@ -17,6 +17,7 @@ class AddNewRealEstatePage extends StatefulWidget {
 
 class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
   final _formKey = GlobalKey<FormState>();
+  bool isSubmitting = false;
 
   // Controllers
   final _titleController = TextEditingController();
@@ -123,6 +124,9 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
 
   // Submit form
   Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => isSubmitting = true);
     String? coverImageUrl;
     if (_coverImage != null) {
       coverImageUrl = await _uploadCoverImage(_coverImage!);
@@ -164,6 +168,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
         'sizeMetric': Helper.areaUnitMap[_selectedMetric],
         'coverPhoto': coverImageUrl,
         'listOfPictures' : extraImagesList ?? [],
+        'currency' : _selectedCurrency,
         'location': {
           'city': _selectedCity,
           'country': "فلسطين", // optional if you want
@@ -173,6 +178,7 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
       };
 
       final response = await addProperty(requestBody);
+      setState(() => isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Real Estate Ad Created Successfully!'),
@@ -383,14 +389,24 @@ class _AddNewRealEstatePageState extends State<AddNewRealEstatePage> {
 
               // Submit button
               ElevatedButton(
-                onPressed: _submitForm,
+                onPressed: isSubmitting ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.pastelYellow,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text("نشر الإعلان", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: isSubmitting
+                    ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Text("نشر الإعلان", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
+
             ],
           ),
         ),

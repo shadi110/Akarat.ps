@@ -79,6 +79,7 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
           itemBuilder: (context, index) {
             final property = properties[index];
             List<String> listOfPictures = [];
+            print('currrrency ${property["currency"]}');
             if (property["listOfPictures"] != null) {
               listOfPictures = List<String>.from(property["listOfPictures"]);
             }
@@ -90,7 +91,11 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
                 price: property["price"],
                 location: property["location"],
                 status: property["status"],
+                currency : property["currency"] ?? '',
                 imageUrl: property["coverPhoto"],
+                type: property["type"],
+                availability: property["availability"] ?? 'متوفر',
+                statusType: property["statusType"] ?? 'للبيع',
                 listOfImages:  listOfPictures ?? []
               ),
             );

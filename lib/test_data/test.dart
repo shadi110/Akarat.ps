@@ -53,7 +53,7 @@ class _PropertyListPageState extends State<PropertyListPage> {
             child: RealEstateCard(
               title: property["title"],
               description: property["description"],
-              price: 0.0,
+              price: 0,
               location: '',
               status: property["status"],
               imageUrl: property["coverPhoto"],

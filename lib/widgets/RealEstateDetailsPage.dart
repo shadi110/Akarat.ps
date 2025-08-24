@@ -1,6 +1,11 @@
+import 'dart:ffi';
+
 import 'package:akarat/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import '../utils/helper.dart';
 import '../widgets/app_text.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class RealEstateDetailsPage extends StatelessWidget {
@@ -8,8 +13,11 @@ class RealEstateDetailsPage extends StatelessWidget {
   final List<String> images;
   final String title;
   final String description;
-  final double price;
+  final double? price;
   final String location;
+  final String currency;
+  final String? statusType;
+  final String? type;
   final String availability; // e.g., "For Sale", "Sold"
   final Map<String, String>? otherDetails; // optional key-value details
 
@@ -22,7 +30,7 @@ class RealEstateDetailsPage extends StatelessWidget {
     required this.price,
     required this.location,
     required this.availability,
-    this.otherDetails,
+    this.otherDetails, required this.currency, this.statusType, this.type,
   });
 
   void _openImage(BuildContext context, String initialImage, List<String> allImages) {
@@ -72,34 +80,49 @@ class RealEstateDetailsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cover image (clickable too)
-            GestureDetector(
-              onTap: () => _openImage(context, coverImage, [coverImage, ...images]),
-              child: Image.network(
-                coverImage,
-                height: 250,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 250,
-                  color: Colors.grey[300],
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.image_not_supported, size: 50),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: GestureDetector(
+                onTap: () => _openImage(context, coverImage, [coverImage, ...images]),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedNetworkImage(
+                    imageUrl: coverImage,
+                    height: 250,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 250,
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                      alignment: Alignment.center,
+                      child: const CircularProgressIndicator(),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 250,
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                    ),
+                  ),
                 ),
               ),
             ),
-
             const SizedBox(height: 8),
 
             // Horizontal images list
             SizedBox(
-              height: 100,
-              child: ListView.builder(
+              height: images.isEmpty ? 0 : 100, // shrink if list is empty
+              child: images.isEmpty
+                  ? const SizedBox.shrink()
+                  : ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: images.length,
                 itemBuilder: (context, index) {
                   return GestureDetector(
-                    onTap: () => _openImage(context, images[index], [coverImage, ...images]), // pass the full list here
+                    onTap: () => _openImage(context, images[index], [coverImage, ...images]),
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
@@ -131,6 +154,7 @@ class RealEstateDetailsPage extends StatelessWidget {
                 },
               ),
             ),
+
             const SizedBox(height: 16),
             // Title & Availability
             Padding(
@@ -138,23 +162,65 @@ class RealEstateDetailsPage extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(
-                    child: AppText(
-                      text: title,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      AppText(
+                        text: price != null
+                            ? NumberFormat('#,###.##').format(price)
+                            : '0',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 8),
+                      AppText(
+                        text: currency ?? '',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueAccent,
+                      ),
+                    ],
                   ),
+                  Spacer(),
                   Container(
+                    width: 100,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: availability.toLowerCase() == 'sold' ? Colors.red : Colors.green,
-                      borderRadius: BorderRadius.circular(12),
+                      color: Helper.propertyTypeColorMap[type] ?? Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    alignment: Alignment.center,
                     child: AppText(
-                      text: availability,
+                      text: Helper.propertyTypeMap[type] ?? 'غير معروف',
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(width: 8,),
+                  Container(
+                    width: 80,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusType?.toLowerCase() == 'للبيع'
+                          ? Colors.green
+                          : statusType?.toLowerCase() == 'for rent'
+                          ? Colors.blue
+                          : Colors.grey, // fallback color
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: AppText(
+                      text: statusType?.toLowerCase() == 'للبيع'
+                          ? 'للبيع'
+                          : statusType?.toLowerCase() == 'for rent'
+                          ? 'للإيجار'
+                          : 'غير معروف',
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],
@@ -162,20 +228,6 @@ class RealEstateDetailsPage extends StatelessWidget {
             ),
 
             const SizedBox(height: 12),
-
-            // Price
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: AppText(
-                text: "السعر: $price",
-                fontSize: 18,
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
             // Location
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -188,12 +240,21 @@ class RealEstateDetailsPage extends StatelessWidget {
                     fontSize: 16,
                     color: Colors.grey[700]!,
                   ),
+                  Spacer(),
+
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
-
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppText(
+                text: title,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             // Description
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),

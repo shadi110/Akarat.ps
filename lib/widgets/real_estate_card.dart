@@ -1,18 +1,26 @@
 import 'package:akarat/constants/ApiConstants.dart';
+import 'package:akarat/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'RealEstateDetailsPage.dart';
 import 'app_text.dart';
+import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 
 class RealEstateCard extends StatelessWidget {
   final String? imageUrl;
   final List<String>? listOfImages;
   final String? title;
   final String? description;
+  final String? currency;
   final double? price;
   final dynamic location; // Changed from String? to dynamic
   final String? status;
   final String? advId;
+  final String? type;
+  final String? availability;
+  final String?  statusType;
   final VoidCallback? onTap;
 
   const RealEstateCard({
@@ -25,7 +33,7 @@ class RealEstateCard extends StatelessWidget {
     this.location, // Changed type
     this.status,
     this.advId,
-    this.onTap,
+    this.onTap, this.currency, this.availability, this.statusType, this.type,
   }) : super(key: key);
 
   // Helper method to extract location text
@@ -79,7 +87,10 @@ class RealEstateCard extends StatelessWidget {
               price: price ?? 0,
               location: safeLocation, // Pass the formatted location
               availability: status ?? '',
+              type: type ?? '',
               images: listOfImages ?? [],
+              currency: currency ?? '',
+              statusType: statusType ?? '',
             ),
           ),
         );
@@ -102,13 +113,21 @@ class RealEstateCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                safeImage,
-                height: 140,
+              child: CachedNetworkImage(
+                imageUrl: safeImage,
+                height: 250,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 180,
+                placeholder: (context, url) => Container(
+                  height: 250,
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  alignment: Alignment.center,
+                  child: const CircularProgressIndicator(strokeWidth: 3,color: Colors.blue),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 250,
+                  width: double.infinity,
                   color: Colors.grey[300],
                   alignment: Alignment.center,
                   child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
@@ -146,12 +165,6 @@ class RealEstateCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  AppText(
-                    text: safeDescription,
-                    fontSize: 14,
-                    color: Colors.grey[700]!,
-                  ),
-                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
@@ -169,12 +182,22 @@ class RealEstateCard extends StatelessWidget {
                   Row(
                     children: [
                       AppText(
-                        text: price?.toString() ?? '0',
+                        text: price != null
+                            ? NumberFormat('#,###.##').format(price)
+                            : '0',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 8),
+                      AppText(
+                        text: currency ?? '',
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.blueAccent,
                       ),
                       const Spacer(),
+
                       if (advId != null)
                         GestureDetector(
                           onTap: () async {

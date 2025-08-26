@@ -1,10 +1,26 @@
-
-import 'package:akarat/widgets/dashboard_main_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:akarat/widgets/dashboard_main_page.dart';
 import 'l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'services/notification_service.dart'; // ADD THIS IMPORT
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notification service
+  final notificationService = NotificationService();
+  final initialized = await notificationService.initialize();
+
+  if (initialized) {
+    // Show welcome notification
+    await notificationService.showWelcomeNotification();
+
+    // Schedule daily notifications
+    notificationService.scheduleDailyNotifications();
+
+    print('Notification system initialized successfully!');
+  }
+
   runApp(const MyApp());
 }
 
@@ -14,7 +30,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      localizationsDelegates:  [
+      localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -24,12 +40,9 @@ class MyApp extends StatelessWidget {
         Locale('ar', ''),
         Locale('en', ''),
       ],
-      locale: const Locale('ar', ''), // Arabic default
+      locale: const Locale('ar', ''),
       debugShowCheckedModeBanner: false,
-      home: DashboardMainPage()
-
+      home: DashboardMainPage(),
     );
   }
 }
-
-

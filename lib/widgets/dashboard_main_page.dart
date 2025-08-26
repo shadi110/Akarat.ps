@@ -21,10 +21,53 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
   bool isLoading = true;
   int _selectedIndex = 0;
 
+  // 🔔 Notification state
+  int _notificationCount = 0;
+  List<String> _notifications = [];
+
   @override
   void initState() {
     super.initState();
     fetchProperties();
+
+    /*Future.delayed(Duration(seconds: 3), () {
+      _addNotification("تمت إضافة عقار جديد!");
+    });*/
+  }
+
+  // Add notification
+  void _addNotification(String message) {
+    setState(() {
+      _notificationCount++;
+      _notifications.add(message);
+    });
+  }
+
+  // Show notifications in a bottom sheet
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => ListView(
+        children: _notifications.isEmpty
+            ? [
+          const ListTile(
+            leading: Icon(Icons.notifications_none),
+            title: Text("لا توجد إشعارات"),
+          )
+        ]
+            : _notifications
+            .map(
+              (msg) => ListTile(
+            leading: const Icon(Icons.notifications),
+            title: Text(msg),
+          ),
+        )
+            .toList(),
+      ),
+    );
+    setState(() {
+      _notificationCount = 0; // clear badge when opened
+    });
   }
 
   Future<bool> checkUserLoggedIn() async {
@@ -38,7 +81,8 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
 
   Future<bool> createUserAndLogin(String phone) async {
     try {
-      final response = await apiService.create(ApiConstants.registerUser, {'phoneNumber': phone});
+      final response =
+      await apiService.create(ApiConstants.registerUser, {'phoneNumber': phone});
       await UserPreferences.saveUser(response['id'].toString(), phone);
       return true;
     } catch (e) {
@@ -51,7 +95,7 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
     try {
       final response = await apiService.read(ApiConstants.realEstates);
       setState(() {
-        properties = response; // Assuming API returns a list
+        properties = response;
         isLoading = false;
       });
     } catch (e) {
@@ -79,7 +123,6 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
           itemBuilder: (context, index) {
             final property = properties[index];
             List<String> listOfPictures = [];
-            print('currrrency ${property["currency"]}');
             if (property["listOfPictures"] != null) {
               listOfPictures = List<String>.from(property["listOfPictures"]);
             }
@@ -91,12 +134,12 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
                 price: property["price"],
                 location: property["location"],
                 status: property["status"],
-                currency : property["currency"] ?? '',
+                currency: property["currency"] ?? '',
                 imageUrl: property["coverPhoto"],
                 type: property["type"],
                 availability: property["availability"] ?? 'متوفر',
                 statusType: property["statusType"] ?? 'للبيع',
-                listOfImages:  listOfPictures ?? []
+                listOfImages: listOfPictures,
               ),
             );
           },
@@ -117,6 +160,35 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.pastelBlue,
+        title: const Text("الرئيسية"),
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: _showNotifications,
+              ),
+              if (_notificationCount > 0)
+                Positioned(
+                  right: 11,
+                  top: 11,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '$_notificationCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+            ],
+          )
+        ],
       ),
       backgroundColor: Colors.white,
       body: _getBody(),
@@ -182,10 +254,9 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
     );
   }
 
-  // Custom bottom bar implementation with reduced height
   Widget _buildCustomBottomBar() {
     return Container(
-      height: 65, // Reduced height
+      height: 65,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -200,7 +271,6 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Home button
           _buildNavItem(Icons.home, "الرئيسية", 0),
           const SizedBox(width: 30),
           _buildNavItem(Icons.real_estate_agent_sharp, "عقاراتي", 1),
@@ -226,14 +296,14 @@ class _DashboardMainPageState extends State<DashboardMainPage> {
               Icon(
                 icon,
                 color: isSelected ? Colors.black : Colors.grey,
-                size: 22, // Smaller icon size
+                size: 22,
               ),
               const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
                   color: isSelected ? Colors.black : Colors.grey,
-                  fontSize: 10, // Smaller font size
+                  fontSize: 10,
                 ),
               ),
             ],
